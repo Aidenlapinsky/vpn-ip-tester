@@ -1,69 +1,44 @@
-# app.py (Python Script)
 import requests
-import socket
-import os
-import ipaddress
+import json
+from flask import Flask, jsonify
 
 app = Flask(__name__)
 
-@app.route("/")
-def index():
-    original_ip = get_current_ip_plan_a()
-    if original_ip is None:
-        original_ip = get_current_ip_plan_b()
-    if original_ip is None:
-        original_ip = get_current_ip_plan_c()
-    
-    vpn_ip = test_vpn()
-    if vpn_ip is None:
-        vpn_ip = test_vpn_alternate()
-    
-    return render_template("index.html", original_ip=original_ip, vpn_ip=vpn_ip)
-
-def get_current_ip_plan_a():
+def get_original_ip():
     try:
-        response = requests.get('https://api.ipify.org?format=json')
-        data = response.json()
-        return data['ip']
+        response = requests.get('https://api.ipify.org')
+        return response.text.strip()
     except requests.exceptions.RequestException as e:
-        return None
+        return "Error: " + str(e)
 
-def get_current_ip_plan_b():
+def get_ip_plan_a():
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
-    except socket.error as e:
-        return None
+        response = requests.get('http://ip.42.pl/raw')
+        return response.text.strip()
+    except requests.exceptions.RequestException as e:
+        return "Error: " + str(e)
 
-def get_current_ip_plan_c():
+def get_ip_plan_b():
     try:
-        ip = os.popen("dig +short myip.opendns.com @resolver1.opendns.com").read().strip()
-        return ip
-    except Exception as e:
-        return None
+        response = requests.get('https://ipapi.co/ip/')
+        return response.text.strip()
+    except requests.exceptions.RequestException as e:
+        return "Error: " + str(e)
 
-def test_vpn():
+def get_ip_plan_c():
     try:
-        vpn_ip = get_current_ip_plan_a()
-        if vpn_ip != original_ip:
-            return vpn_ip
-        else:
-            return "VPN is not working correctly!"
-    except Exception as e:
-        return None
+        response = requests.get('https://api.ipdata.co/ip')
+        return response.text.strip()
+    except requests.exceptions.RequestException as e:
+        return "Error: " + str(e)
 
-def test_vpn_alternate():
-    try:
-        vpn_ip = get_current_ip_plan_b()
-        if vpn_ip != original_ip:
-            return vpn_ip
-        else:
-            return "VPN is not working correctly!"
-    except Exception as e:
-        return None
+@app.route('/get_ip', methods=['GET'])
+def get_ip():
+    original_ip = get_original_ip()
+    plan_a_ip = get_ip_plan_a()
+    plan_b_ip = get_ip_plan_b()
+    plan_c_ip = get_ip_plan_c()
+    return jsonify({'original_ip': original_ip, 'plan_a_ip': plan_a_ip, 'plan_b_ip': plan_b_ip, 'plan_c_ip': plan_c_ip})
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)
